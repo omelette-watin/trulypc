@@ -1,0 +1,359 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model admins {
+  id        Int      @id
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @db.Timestamptz(6)
+  users     users    @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "admins_id_foreign")
+}
+
+model authorizedCurrencies {
+  id           Int      @id @default(autoincrement())
+  currencyCode String
+  enabled      Boolean
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model bankAccounts {
+  id                    Int                  @id @default(autoincrement())
+  accountHolderName     String
+  bankInformationStatus String
+  companyId             Int
+  iban                  String               @unique(map: "bankaccounts_iban_unique")
+  isPrimaryAccount      Boolean?
+  label                 String?
+  createdAt             DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime             @default(now()) @db.Timestamptz(6)
+  companies             companies            @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "bankaccounts_companyid_foreign")
+  customerOnBoardings   customerOnBoardings?
+  transactions          transactions[]
+}
+
+model companies {
+  id                  Int                   @id @default(autoincrement())
+  addressLine1        String
+  addressLine2        String?
+  city                String
+  countryCode         String
+  kybStatus           String
+  legalForm           String
+  name                String
+  registration        String                @unique(map: "companies_registration_unique")
+  state               String?
+  zipCode             String
+  createdAt           DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime              @default(now()) @db.Timestamptz(6)
+  bankAccounts        bankAccounts[]
+  customerOnBoardings customerOnBoardings[]
+  users               users[]
+}
+
+model customerOnBoardingDocFiles {
+  id                   Int                 @id @default(autoincrement())
+  customerOnBoardingId Int
+  fileName             String
+  referTo              String
+  uri                  String
+  createdAt            DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime            @default(now()) @db.Timestamptz(6)
+  customerOnBoardings  customerOnBoardings @relation(fields: [customerOnBoardingId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "customeronboardingdocfiles_customeronboardingid_foreign")
+}
+
+model customerOnBoardings {
+  id                         Int                          @id @default(autoincrement())
+  bankAccountId              Int?                         @unique(map: "customeronboardings_bankaccountid_unique")
+  companyId                  Int
+  customerId                 Int?                         @unique(map: "customeronboardings_customerid_unique")
+  stage                      String
+  createdAt                  DateTime                     @default(now()) @db.Timestamptz(6)
+  updatedAt                  DateTime                     @default(now()) @db.Timestamptz(6)
+  bankAccounts               bankAccounts?                @relation(fields: [bankAccountId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "customeronboardings_bankaccountid_foreign")
+  companies                  companies                    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "customeronboardings_companyid_foreign")
+  customers                  customers?                   @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "customeronboardings_customerid_foreign")
+  customerOnBoardingDocFiles customerOnBoardingDocFiles[]
+}
+
+model customers {
+  id                           Int                  @id
+  birthCity                    String
+  birthCountryCode             String
+  birthDate                    DateTime             @db.Date
+  birthZipCode                 String
+  identificationDocumentNumber String
+  identificationDocumentType   String
+  isShareholder                Boolean
+  kycStatus                    String
+  title                        String
+  createdAt                    DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt                    DateTime             @default(now()) @db.Timestamptz(6)
+  users                        users                @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "customers_id_foreign")
+  customerOnBoardings          customerOnBoardings?
+  deals                        deals[]
+  draftDeals                   draftDeals[]
+  partnerInvitations           partnerInvitations[]
+  wallets                      wallets[]
+}
+
+model deals {
+  id                         Int                          @id @default(autoincrement())
+  agreementDate              DateTime                     @db.Date
+  amount                     Int
+  currencyCode               String
+  customerId                 Int
+  deliveryAddressLine1       String
+  deliveryAddressLine2       String?
+  deliveryCity               String
+  deliveryCountryCode        String
+  deliveryState              String?
+  deliveryZipCode            String
+  description                String
+  direction                  String
+  dispatchDate               DateTime                     @db.Date
+  escrowFees                 Int
+  feesPaidBy                 String
+  incoterm                   String
+  name                       String
+  partnerInvitationId        Int?
+  portOfDischarge            String
+  portOfLoading              String
+  shippingMethod             String
+  status                     String
+  tulypDealId                String                       @unique(map: "deals_tulypdealid_unique")
+  typeOfShipping             String
+  virtualAccountNumberId     Int
+  createdAt                  DateTime                     @default(now()) @db.Timestamptz(6)
+  updatedAt                  DateTime                     @default(now()) @db.Timestamptz(6)
+  customers                  customers                    @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "deals_customerid_foreign")
+  partnerInvitations         partnerInvitations?          @relation(fields: [partnerInvitationId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "deals_partnerinvitationid_foreign")
+  virtualAccountNumbers      virtualAccountNumbers        @relation(fields: [virtualAccountNumberId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "deals_virtualaccountnumberid_foreign")
+  emailMessages              emailMessages[]
+  paymentReleaseRequirements paymentReleaseRequirements[]
+
+  @@unique([name, customerId], map: "deals_name_customerid_unique")
+}
+
+model draftDeals {
+  id                              Int                               @id @default(autoincrement())
+  agreementDate                   DateTime?                         @db.Date
+  amount                          Int?
+  currencyCode                    String
+  customerId                      Int
+  deliveryAddressLine1            String?
+  deliveryAddressLine2            String?
+  deliveryCity                    String?
+  deliveryCountryCode             String?
+  deliveryState                   String?
+  deliveryZipCode                 String?
+  description                     String?
+  direction                       String?
+  dispatchDate                    DateTime?                         @db.Date
+  escrowFees                      Int?
+  feesPaidBy                      String?
+  incoterm                        String?
+  name                            String
+  partnerInvitationId             Int?
+  portOfDischarge                 String?
+  portOfLoading                   String?
+  shippingMethod                  String?
+  typeOfShipping                  String?
+  createdAt                       DateTime                          @default(now()) @db.Timestamptz(6)
+  updatedAt                       DateTime                          @default(now()) @db.Timestamptz(6)
+  customers                       customers                         @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "draftdeals_customerid_foreign")
+  partnerInvitations              partnerInvitations?               @relation(fields: [partnerInvitationId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "draftdeals_partnerinvitationid_foreign")
+  draftPaymentReleaseRequirements draftPaymentReleaseRequirements[]
+
+  @@unique([name, customerId], map: "draftdeals_name_customerid_unique")
+}
+
+model draftPaymentReleaseRequirementDoc {
+  id                               Int                             @id @default(autoincrement())
+  drafPpaymentReleaseRequirementId Int
+  referTo                          String
+  createdAt                        DateTime                        @default(now()) @db.Timestamptz(6)
+  updatedAt                        DateTime                        @default(now()) @db.Timestamptz(6)
+  draftPaymentReleaseRequirements  draftPaymentReleaseRequirements @relation(fields: [drafPpaymentReleaseRequirementId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "draftpaymentreleaserequirementdoc_drafppaymentreleaserequiremen")
+}
+
+model draftPaymentReleaseRequirements {
+  id                                Int                                 @id @default(autoincrement())
+  draftDealId                       Int
+  requirementType                   String
+  task                              String
+  createdAt                         DateTime                            @default(now()) @db.Timestamptz(6)
+  updatedAt                         DateTime                            @default(now()) @db.Timestamptz(6)
+  draftDeals                        draftDeals                          @relation(fields: [draftDealId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "draftpaymentreleaserequirements_draftdealid_foreign")
+  draftPaymentReleaseRequirementDoc draftPaymentReleaseRequirementDoc[]
+}
+
+model emailMessageDocFiles {
+  id                                 Int                                  @id @default(autoincrement())
+  emailMessageId                     Int
+  fileName                           String
+  referTo                            String
+  uri                                String
+  createdAt                          DateTime                             @default(now()) @db.Timestamptz(6)
+  updatedAt                          DateTime                             @default(now()) @db.Timestamptz(6)
+  emailMessages                      emailMessages                        @relation(fields: [emailMessageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "emailmessagedocfiles_emailmessageid_foreign")
+  emailMessages_emailMessageDocFiles emailMessages_emailMessageDocFiles[]
+}
+
+model emailMessages {
+  id                                 Int                                  @id @default(autoincrement())
+  dealId                             Int
+  message                            String?
+  senderId                           Int
+  subject                            String
+  createdAt                          DateTime                             @default(now()) @db.Timestamptz(6)
+  updatedAt                          DateTime                             @default(now()) @db.Timestamptz(6)
+  deals                              deals                                @relation(fields: [dealId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "emailmessages_dealid_foreign")
+  users                              users                                @relation(fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "emailmessages_senderid_foreign")
+  emailMessageDocFiles               emailMessageDocFiles[]
+  emailMessages_emailMessageDocFiles emailMessages_emailMessageDocFiles[]
+  emailMessages_users                emailMessages_users[]
+}
+
+model emailMessages_emailMessageDocFiles {
+  id                     Int                  @id @default(autoincrement())
+  emailMessageId         Int
+  emailMessageDocFilesId Int
+  createdAt              DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime             @default(now()) @db.Timestamptz(6)
+  emailMessageDocFiles   emailMessageDocFiles @relation(fields: [emailMessageDocFilesId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "emailmessages_emailmessagedocfiles_emailmessagedocfilesid_forei")
+  emailMessages          emailMessages        @relation(fields: [emailMessageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "emailmessages_emailmessagedocfiles_emailmessageid_foreign")
+}
+
+model emailMessages_users {
+  id             Int           @id @default(autoincrement())
+  emailMessageId Int
+  userId         Int
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime      @default(now()) @db.Timestamptz(6)
+  emailMessages  emailMessages @relation(fields: [emailMessageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "emailmessages_users_emailmessageid_foreign")
+  users          users         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "emailmessages_users_userid_foreign")
+}
+
+model partnerInvitations {
+  id                 Int          @id @default(autoincrement())
+  companyName        String
+  companyLogoFileUri String?
+  customerId         Int
+  email              String
+  firstName          String
+  lastName           String
+  partnerId          Int?
+  phone              String
+  createdAt          DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime     @default(now()) @db.Timestamptz(6)
+  customers          customers    @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "partnerinvitations_customerid_foreign")
+  partners           partners?    @relation(fields: [partnerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "partnerinvitations_partnerid_foreign")
+  deals              deals[]
+  draftDeals         draftDeals[]
+
+  @@unique([email, customerId], map: "partnerinvitations_email_customerid_unique")
+}
+
+model partners {
+  id                 Int                  @id
+  createdAt          DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime             @default(now()) @db.Timestamptz(6)
+  users              users                @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "partners_id_foreign")
+  partnerInvitations partnerInvitations[]
+}
+
+model paymentReleaseRequirementDocFiles {
+  id                          Int                        @id @default(autoincrement())
+  approvalStatus              String
+  feedback                    String?
+  fileName                    String
+  paymentReleaseRequirementId Int
+  referTo                     String
+  documentAvailability        String
+  task                        String?
+  uri                         String
+  createdAt                   DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt                   DateTime                   @default(now()) @db.Timestamptz(6)
+  paymentReleaseRequirements  paymentReleaseRequirements @relation(fields: [paymentReleaseRequirementId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "paymentreleaserequirementdocfiles_paymentreleaserequirementid_f")
+}
+
+model paymentReleaseRequirements {
+  id                                Int                                 @id @default(autoincrement())
+  dealId                            Int
+  requirementType                   String
+  status                            String                              @default("MISSING")
+  task                              String
+  createdAt                         DateTime                            @default(now()) @db.Timestamptz(6)
+  updatedAt                         DateTime                            @default(now()) @db.Timestamptz(6)
+  deals                             deals                               @relation(fields: [dealId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "paymentreleaserequirements_dealid_foreign")
+  paymentReleaseRequirementDocFiles paymentReleaseRequirementDocFiles[]
+}
+
+model transactions {
+  id                 Int          @id @default(autoincrement())
+  amount             Int
+  bankAccountId      Int
+  rapydTransactionId String
+  transactionCode    String
+  walletId           Int
+  createdAt          DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime     @default(now()) @db.Timestamptz(6)
+  bankAccounts       bankAccounts @relation(fields: [bankAccountId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transactions_bankaccountid_foreign")
+  wallets            wallets      @relation(fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transactions_walletid_foreign")
+}
+
+model users {
+  id                          Int                   @id @default(autoincrement())
+  companyId                   Int
+  email                       String                @unique(map: "users_email_unique")
+  firstName                   String
+  gender                      String
+  lastName                    String
+  passwordHash                String?
+  passwordResetToken          String?
+  passwordResetTokenExpiresAt DateTime?             @db.Timestamptz(6)
+  passwordSalt                String?
+  phone                       String                @unique(map: "users_phone_unique")
+  residenceCountryCode        String
+  role                        String
+  suspendedAt                 DateTime?             @db.Timestamptz(6)
+  createdAt                   DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt                   DateTime              @default(now()) @db.Timestamptz(6)
+  companies                   companies             @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_companyid_foreign")
+  admins                      admins?
+  customers                   customers?
+  emailMessages               emailMessages[]
+  emailMessages_users         emailMessages_users[]
+  partners                    partners?
+}
+
+model virtualAccountNumbers {
+  id                Int      @id @default(autoincrement())
+  currencyCode      String
+  iban              String   @unique(map: "virtualaccountnumbers_iban_unique")
+  issuedBankAccount String   @unique(map: "virtualaccountnumbers_issuedbankaccount_unique")
+  status            String
+  walletId          Int
+  createdAt         DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @db.Timestamptz(6)
+  wallets           wallets  @relation(fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "virtualaccountnumbers_walletid_foreign")
+  deals             deals[]
+}
+
+model wallets {
+  id                    Int                     @id @default(autoincrement())
+  customerId            Int
+  ewalletReferenceId    String                  @unique(map: "wallets_ewalletreferenceid_unique")
+  status                String
+  createdAt             DateTime                @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime                @default(now()) @db.Timestamptz(6)
+  customers             customers               @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallets_customerid_foreign")
+  transactions          transactions[]
+  virtualAccountNumbers virtualAccountNumbers[]
+}
